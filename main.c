@@ -1,7 +1,7 @@
 #include "raylib.h"
 #include <math.h>
 
-void HandleKeys();
+void HandleKeys(float deltaTime);
 Vector3 Lerp(Vector3 start, Vector3 end, float amount);
 float LerpAngle(float start, float end, float amount);
 
@@ -10,8 +10,9 @@ const int screenHeight = 1080;
 float cameraAngle = 45.0f;
 float cameraHeight = 10.0f;
 float lerpSpeed = 5.0f;
+float zoomSpeed = 30.0f;
 int gridSpacing = 1;
-int gridSize = 250; // around the cube
+int gridSize = 250;
 
 Vector3 playerPosition = { 0.0f, 0.5f, 0.0f };
 float cameraRotation = 45.0f;
@@ -37,7 +38,7 @@ int main(void) {
     while (!WindowShouldClose()) {
         float deltaTime = GetFrameTime();
 
-        HandleKeys();
+        HandleKeys(deltaTime);
         
         // Lerp camera rotation with delta time
         cameraRotation = LerpAngle(cameraRotation, targetCameraRotation, lerpSpeed * deltaTime);
@@ -63,7 +64,7 @@ int main(void) {
         ClearBackground(RAYWHITE);
         BeginMode3D(camera);
         // Adjust grid drawing to offset by half a unit
-        float halfUnitOffset = 0.5f; // Offset to align grid with cube corner
+        float halfUnitOffset = 0.5f;
         for (int i = -gridSize; i <= gridSize; i++) {
             Vector3 startLineX = { playerPosition.x - gridSize + halfUnitOffset, 0.0f, playerPosition.z + i + halfUnitOffset };
             Vector3 endLineX = { playerPosition.x + gridSize + halfUnitOffset, 0.0f, playerPosition.z + i + halfUnitOffset };
@@ -87,28 +88,39 @@ int main(void) {
     return 0;
 }
 
-void HandleKeys() {
+void HandleKeys(float deltaTime) {
     if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
-        if (IsKeyPressed(KEY_H)) {
-            targetCameraRotation -= 90.0f; // Rotate left
-        }
-        if (IsKeyPressed(KEY_L)) {
-            targetCameraRotation += 90.0f; // Rotate right
-        }
+        if (IsKeyPressed(KEY_H)) targetCameraRotation += 90.0f;
+        if (IsKeyPressed(KEY_L)) targetCameraRotation -= 90.0f;
+        
         if (IsKeyDown(KEY_J)) {
-            cameraDistance -= 0.5f;
+            cameraDistance -= zoomSpeed * deltaTime;
+            if (cameraDistance < 5.0f) cameraDistance = 5.0f;
         }
         if (IsKeyDown(KEY_K)) {
-            cameraDistance += 0.5f;
-            if (cameraDistance < 5.0f) cameraDistance = 5.0f; // Minimum distance
+            cameraDistance += zoomSpeed * deltaTime;
         }        
     } else {
-        if (IsKeyPressed(KEY_H)) playerPosition.x += gridSpacing;
-        if (IsKeyPressed(KEY_L)) playerPosition.x -= gridSpacing;
-        if (IsKeyPressed(KEY_J)) playerPosition.z -= gridSpacing;
-        if (IsKeyPressed(KEY_K)) playerPosition.z += gridSpacing;
+        if (IsKeyPressed(KEY_H)) {
+            playerPosition.x += cosf((cameraRotation + 135.0f) * DEG2RAD) * gridSpacing;
+            playerPosition.z += sinf((cameraRotation + 135.0f) * DEG2RAD) * gridSpacing;
+        }
+        if (IsKeyPressed(KEY_L)) {
+            playerPosition.x += cosf((cameraRotation - 45.0f) * DEG2RAD) * gridSpacing;
+            playerPosition.z += sinf((cameraRotation - 45.0f) * DEG2RAD) * gridSpacing;
+        }
+        if (IsKeyPressed(KEY_J)) {
+            playerPosition.x += cosf((cameraRotation + 45.0f) * DEG2RAD) * gridSpacing;
+            playerPosition.z += sinf((cameraRotation + 45.0f) * DEG2RAD) * gridSpacing;
+        }
+        if (IsKeyPressed(KEY_K)) {
+            playerPosition.x += cosf((cameraRotation - 135.0f) * DEG2RAD) * gridSpacing;
+            playerPosition.z += sinf((cameraRotation - 135.0f) * DEG2RAD) * gridSpacing;
+        }
         if (IsKeyPressed(KEY_Z)) isometricAngle = 45.0f;
         if (IsKeyPressed(KEY_X)) isometricAngle = 35.264f;
+        if (IsKeyPressed(KEY_Q)) CloseWindow();
+        if (IsKeyPressed(KEY_ZERO)) cameraDistance = 15.0f;
         if (IsKeyPressed(KEY_BACKSLASH)) {
 
         }
@@ -116,7 +128,7 @@ void HandleKeys() {
 }
 
 Vector3 Lerp(Vector3 start, Vector3 end, float amount) {
-    if (amount > 1.0f) amount = 1.0f; // Clamp
+    if (amount > 1.0f) amount = 1.0f;
     if (amount < 0.0f) amount = 0.0f;
     
     Vector3 result;
@@ -127,13 +139,11 @@ Vector3 Lerp(Vector3 start, Vector3 end, float amount) {
 }
 
 float LerpAngle(float start, float end, float amount) {
-    if (amount > 1.0f) amount = 1.0f; // Clamp
+    if (amount > 1.0f) amount = 1.0f;
     if (amount < 0.0f) amount = 0.0f;
     
-    // Handle angle wrapping for smooth rotation
     float difference = end - start;
     
-    // Normalize the difference to [-180, 180] range for shortest rotation
     while (difference > 180.0f) difference -= 360.0f;
     while (difference < -180.0f) difference += 360.0f;
     
